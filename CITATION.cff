@@ -1,0 +1,16 @@
+abstract: "Weighted Spatio-Temporal Kernel Density Estimation"
+authors:
+  - family-names: Koren
+    given-names: L.
+date-released: "2024-10-29"
+cff-version: 1.2.0
+keywords:
+- "spatio-temporal kernel density estimation"
+- "weighted kernel density estimation"
+license: MIT
+message: "If you use this software, please cite it using these metadata."
+title: "wSTKDE"
+version: 0.0.1
+
+
+
