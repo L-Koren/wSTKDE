@@ -586,7 +586,9 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
     t_distance_recip = 1 / t_distance
 
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
-    stkde_values = np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64)
+    # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
+    # Hence this workaround, for another programming language implementation make sure to consider this!
+    stkde_values = np.asfortranarray(np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64))
 
     # Normalization factor 1 / (n * x_bandwidth * y_bandwidth * t_bandwidth), * 0.75^3 (* once for each kernel)
     normalization_factor = 1 / (num_points * x_bandwidth * y_bandwidth * t_bandwidth) * 0.421875
@@ -762,7 +764,9 @@ def calculate_stkde_for_voxel_grid_weighted(coords_array: NDArray[np.float64], x
     t_distance_recip = 1 / t_distance
 
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
-    stkde_values = np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64)
+    # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
+    # Hence this workaround, for another programming language implementation make sure to consider this!
+    stkde_values = np.asfortranarray(np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64))
 
     # Initialize variables for sum of weights and sum of squared weights. 
     # Used for calculating normalization factor, see: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.html
