@@ -541,7 +541,7 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
         x_voxel_centers_array (NDArray[np.float64]): Array of x voxel centers, created using np.linspace
         y_voxel_centers_array (NDArray[np.float64]): Array of y voxel centers, created using np.linspace
         t_voxel_centers_array (NDArray[np.float64]): Array of t voxel centers, created using np.linspace.
-        return_ijk_order (bool): If True, returns the STKDE values in 'ijk' order, if False returns in 'kji' order, NOTE: kji order returns slower.
+        return_ijk_order (bool): If True, returns the STKDE values in 'ijk' order, if False returns in 'kji' order, NOTE: ijk order returns slower.
 
     Raises:
         ValueError: If number of columns in coords_array is not equal to 3
@@ -588,7 +588,7 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
     # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
     # Hence this workaround, for another programming language implementation make sure to consider this!
-    stkde_values = np.asfortranarray(np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64))
+    stkde_values = np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64).T
 
     # Normalization factor 1 / (n * x_bandwidth * y_bandwidth * t_bandwidth), * 0.75^3 (* once for each kernel)
     normalization_factor = 1 / (num_points * x_bandwidth * y_bandwidth * t_bandwidth) * 0.421875
@@ -620,7 +620,7 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
             # Upper bound, rounded up because of exclusive indexing
             ub_x = min(ceil(x_val_i + x_bandwidth_i), number_of_x_layers)
         elif x_val_i <= neg_x_bandwidth_i:  # Point is further away than a bandwidth from smallest voxel value, return no voxels
-            continue  # Skip the rest of the loop, as no voxels are influenced
+            continue  # Continue to next iteration of the loop, as no voxels are influenced
         else:  # Remaining negative i values (0 > x_val_i > -x_bandwidth_i)
             lb_x = 0  # Lower bound is always the smallest voxel value
             # Upper bound is calculated as normal
@@ -673,8 +673,7 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
     # It is possible to have the array be flattenend from the beginning, but this makes accessing the right voxel indexes harder, code less readable, and CUDA impossible.
     # Additionally, we need to loop through all values to multiply with the normalization factor, so we might as well flatten at that point.
     
-    # NOTE: For kji order the return is a lot slower than for ijk order. This is because of the way the array is accessed in memory.
-    # This could be fixed, but would require rewriting the entire function above, and would make ijk slower as a result. 
+    # NOTE: For ijk order the return is a lot slower than for kji order. This is because of the way the array is accessed in memory.
     if return_ijk_order:
         number_of_voxels_per_x_layer = number_of_y_layers * number_of_t_layers
         stkde_grid = np.empty(number_of_x_layers * number_of_voxels_per_x_layer, dtype=np.float64)
@@ -718,7 +717,7 @@ def calculate_stkde_for_voxel_grid_weighted(coords_array: NDArray[np.float64], x
         x_voxel_centers_array (NDArray[np.float64]): Array of x voxel centers, created using np.linspace
         y_voxel_centers_array (NDArray[np.float64]): Array of y voxel centers, created using np.linspace
         t_voxel_centers_array (NDArray[np.float64]): Array of t voxel centers, created using np.linspace
-        return_ijk_order (bool): If True, returns the STKDE values in 'ijk' order, if False returns in 'kji' order, NOTE: kji order returns slower.
+        return_ijk_order (bool): If True, returns the STKDE values in 'ijk' order, if False returns in 'kji' order, NOTE: ijk order returns slower.
 
     Raises:
         ValueError: If number of columns in coords_array is not equal to 4
@@ -766,7 +765,7 @@ def calculate_stkde_for_voxel_grid_weighted(coords_array: NDArray[np.float64], x
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
     # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
     # Hence this workaround, for another programming language implementation make sure to consider this!
-    stkde_values = np.asfortranarray(np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64))
+    stkde_values = np.zeros((number_of_x_layers, number_of_y_layers, number_of_t_layers), dtype=np.float64).T
 
     # Initialize variables for sum of weights and sum of squared weights. 
     # Used for calculating normalization factor, see: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.html
@@ -1088,7 +1087,7 @@ or check if the data is very spread out, which can cause optimal bandwidths to b
             "(3/5) Completed grid computation in {:.2f} seconds.".format(time_3 - time_2))
     
     # Step 3: Calculate STKDE for each voxel ---------------------------------------------------------------------------------------------------------------------
-    # Return in kji order as the vtk file format expects this order
+    # Return in kji order as the vtk file format expects this order.
     if weights_present:
         stkde_values = calculate_stkde_for_voxel_grid_weighted(combined_coords_array, x_bandwidth, y_bandwidth, t_bandwidth, xgrid, ygrid, tgrid, False)
     else:
