@@ -584,6 +584,12 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
     x_distance_recip = 1 / x_distance
     y_distance_recip = 1 / y_distance
     t_distance_recip = 1 / t_distance
+    
+    # Calculate maximum number of voxels affected and create constantly overwritten buffers to write intermediate Epanechnikov values to.
+    max_voxels_y = ceil(2 * y_bandwidth_i)
+    max_voxels_t = ceil(2 * t_bandwidth_i)
+    y_epanechnikov_values = np.empty(max_voxels_y, dtype=np.float64)
+    t_epanechnikov_values = np.empty(max_voxels_t, dtype=np.float64)
 
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
     # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
@@ -649,11 +655,9 @@ def calculate_stkde_for_voxel_grid(coords_array: NDArray[np.float64], x_bandwidt
         # Precompute Epanechnikov kernel values per dimension, skip the first dimension as we calculate it in the nested loops later
         # Possible TODO: Reciprocal could be used instead of dividing by bandwidth, will lead to some floating point drift though
         # Second possible TODO: A custom ordering of the loops would presumably be faster, but this is not implemented here.
-        y_epanechnikov_values = np.empty(ub_y - lb_y, dtype=np.float64)
         for j, y_voxel_value in enumerate(y_voxel_centers_array[lb_y:ub_y]):
             y_epanechnikov_values[j] = 1 - ((y_voxel_value - y_value) / y_bandwidth)**2
 
-        t_epanechnikov_values = np.empty(ub_t - lb_t, dtype=np.float64)
         for j, t_voxel_value in enumerate(t_voxel_centers_array[lb_t:ub_t]):
             t_epanechnikov_values[j] = 1 - ((t_voxel_value - t_value) / t_bandwidth)**2
 
@@ -761,6 +765,12 @@ def calculate_stkde_for_voxel_grid_weighted(coords_array: NDArray[np.float64], x
     x_distance_recip = 1 / x_distance
     y_distance_recip = 1 / y_distance
     t_distance_recip = 1 / t_distance
+    
+    # Calculate maximum number of voxels affected and create constantly overwritten buffers to write intermediate Epanechnikov values to.
+    max_voxels_y = ceil(2 * y_bandwidth_i)
+    max_voxels_t = ceil(2 * t_bandwidth_i)
+    y_epanechnikov_values = np.empty(max_voxels_y, dtype=np.float64)
+    t_epanechnikov_values = np.empty(max_voxels_t, dtype=np.float64)
 
     # Create a stkde values 3d array. We fill this array with zeroes so it is possible to add to the array.
     # NOTE: Ensuring this array is in Fortran order is crucial for fast writes in the innermost loop. Numba does not support native creation of Fortran arrays for np.zeros.
@@ -811,11 +821,9 @@ def calculate_stkde_for_voxel_grid_weighted(coords_array: NDArray[np.float64], x
             lb_t = 0
             ub_t = min(ceil(t_val_i + t_bandwidth_i), number_of_t_layers)
 
-        y_epanechnikov_values = np.empty(ub_y - lb_y, dtype=np.float64)
         for j, y_voxel_value in enumerate(y_voxel_centers_array[lb_y:ub_y]):
             y_epanechnikov_values[j] = 1 - ((y_voxel_value - y_value) / y_bandwidth)**2
 
-        t_epanechnikov_values = np.empty(ub_t - lb_t, dtype=np.float64)
         for j, t_voxel_value in enumerate(t_voxel_centers_array[lb_t:ub_t]):
             t_epanechnikov_values[j] = 1 - ((t_voxel_value - t_value) / t_bandwidth)**2
 
