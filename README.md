@@ -17,48 +17,40 @@ conda env create -f environment.yml
 ```
 ```bash
 # Notebooks environment
-conda env create -f environment.yml && conda install -n wstkde ipykernel>=6.29.5 matplotlib>=3.9.2 pyarrow>=17.0.0
+conda env create -f environment.yml && conda install -n wstkde ipykernel>=7.2.0 matplotlib>=3.10.8 pyarrow>=23.0.1
 ```
 ## How to run
 1. Import stkde and (geo)pandas
 ```python
 import pandas as pd
 import geopandas as gpd
-from src.stkde import stkde
+from src.stkde import STKDE
 ```
 2. Import dataset to geopandas dataframe
 ```python
 dataset = gpd.read_file(file_path)
 ```
-3. Run the STKDE function on the imported dataset
+3. Create an instance of the STKDE class with the dataset
 ```python
-stkde(gdf=dataset, time_col='time_column', crs='EPSG:XXXX', number_of_voxels=(100,100,100),
-      bandwidths=(500, 500, 10), output_file='output_file_name')
+stkde(gdf=dataset, time_col='time_column', grid_size=(100,100,100), bandwidths=(500, 500, 10))
 ```
 
-### Main function: `stkde`
-This function calculates the Spatio-Temporal Kernel Density Estimation (STKDE) for points in a GeoDataFrame broadly following the method by Hu, et al. (2018).<br />
+### Main class: `STKDE`
+This class calculates the Spatio-Temporal Kernel Density Estimation (STKDE) for points in a GeoDataFrame broadly following the method by Hu, et al. (2018).<br />
 
-This function uses a custom very fast algorithm to calculate the STKDE called STOPKDE (Spatio-Temporal One-Pass Kernel Density Estimation). This algorithm outperforms the naive implementation by many orders of magnitude without compromising on the estimation quality. At time of writing this project is the only one STKDE implementation which supports weighted STKDE, where each of the points can be assigned a weight. If an output location is provided the result is stored as a visualisation toolkit (VTK) file. This function always returns the results as a NumPy array.  
+The class uses a custom very fast algorithm to calculate the STKDE called STOPKDE (Spatio-Temporal One-Pass Kernel Density Estimation). This algorithm outperforms the naive implementation by many orders of magnitude without compromising on the estimation quality. At time of writing this project is the only STKDE implementation which supports weighted STKDE.
 
 #### Arguments:
 | Argument                     | Type                       | Optional | Description                                                                                     |
 |------------------------------|----------------------------|----------|-------------------------------------------------------------------------------------------------|
 | `gdf`                        | GeoDataFrame               | ❌       | GeoPandas object containing the data for STKDE.                                                 |
 | `time_col`                   | string                     | ❌       | The name of the column containing the time data in the GeoDataFrame.                             |
-| `crs`                        | string                     | ❌       | Coordinate reference system to calculate the STKDE for. Accepts formats shown [here](https://pyproj4.github.io/pyproj/stable/api/crs/crs.html#pyproj.crs.CRS.from_user_input).              |
-| `number_of_voxels`           | Tuple[int, int, int]       | ❌       | Number of voxels for each axis (x, y, t), or per bandwidth depending on the 'voxel_method'.      |
-| `voxel_method`               | 'constant' or 'adaptive'   | ✔️       | Method to calculate the voxel grid. Defaults to 'constant'.                                      |
-| `bandwidths`                 | Tuple[float, float, float] | ✔️       | Bandwidths for the STKDE in the x, y, and t dimensions. See [KDEpy](https://kdepy.readthedocs.io/en/stable/bandwidth.html#bandwidth) for a 1D example of bandwidth effects. |
-| `calculate_optimal_bandwidths` | bool                     | ✔️       | If True, bandwidths will be estimated using the method described in Hu et al. (2018). Defaults to False. If False, make sure to supply bandwidths. |
+| `grid_size`                  | Tuple[int, int, int]       | ❌       | Number of voxels for each axis (x, y, t).                                                        |
+| `bandwidths`                 | Tuple[float, float, float] or Literal['scott', 'silverman', 'cross-validation'] | ✔️       | Bandwidths for STKDE in each dimension (x, y, t), or method for estimating bandwidths. See [KDEpy](https://kdepy.readthedocs.io/en/stable/bandwidth.html#bandwidth) for a 1D example of bandwidth effects. |
 | `weight_col`                 | str                        | ✔️       | Name of the column in the GeoDataFrame that contains weights for each point. Defaults to None.                    |
-| `output_file`                | str or pathlib.Path        | ✔️       | Path to save the output to a VTK file. If None, the output will not be saved. Defaults to None.  |
-| `verbose`                    | bool                       | ✔️       | If True, the function will print progress updates during the computation. Defaults to True.      |
-
-For advanced users who prefer not to use the more user-friendly *stkde* function, the *calculate_stkde_for_voxel_grid* and *calculate_stkde_for_voxel_grid_weighted* functions are available. Please be aware these may not raise proper error messages if crashes occur. Documentation for these is present in the code. 
 
 ## Example - New York City traffic accidents
-For a concrete example please take a look at the [stkde_example.ipynb](./notebooks/stkde_example.ipynb) notebook. This example uses a dataset of 1.8 million motor vehicle crashes in New York City (New York Police Department (NYPD), 2024). The inputs and outputs for this example are provided in this repository. For visualising the output please see the [visualisation section](#visualisation). In the example both a seasonal pattern and an unexpected reduction in traffic accidents in New York City can be observed. The unexpected reduction can be attributed to COVID-19 lockdown measures. These kinds of patterns are expected to become visible through the use of this method. On a Windows 10 22H2 laptop, with a Ryzen 5 5500U and 3200MHz 16GB ram, this computation takes 0.2 seconds for nearly 1.8 million points and 1 million voxels. 
+For a concrete example please take a look at the [stkde_example.ipynb](./notebooks/stkde_example.ipynb) notebook. This example uses a dataset of 1.8 million motor vehicle crashes in New York City (New York Police Department (NYPD), 2024). The inputs and outputs for this example are provided in this repository. For visualising the output please see the [visualisation section](#visualisation). In the example both a seasonal pattern and an unexpected reduction in traffic accidents in New York City can be observed. The unexpected reduction can be attributed to COVID-19 lockdown measures. These kinds of patterns are expected to become visible through the use of this method. On a Windows 10 22H2 laptop, with a Ryzen 5 5500U and 3200MHz 16GB ram, the computation takes 0.2 seconds for nearly 1.8 million points and 1 million voxels. 
 
 ## How it works
 This section provides a brief overview of how the STKDE method in this repository works. For a more complete theoretical overview of how STKDE in general works please see the [references](#references) listed below. 
@@ -103,7 +95,7 @@ $$
 
 As explained previously the grid is stored in a 3D array with shape $(x_{num}, y_{num}, t_{num})$. By calculating the indices in the way described above for every dimension, the voxels that a point affects are identified. This calculation can occur on a point-by-point basis in constant time, as this calculation is not affected by bandwidth sizes, or number of voxels. 
 
-A second technique used here attempts to minimise storage issues by taking advantage of the summation in the STKDE equation. Now that we know which voxels are affected by the point, we can calculate the Epanechnikov kernel for each voxel and dimension. By combining this with some precomputation of the unique Epanechnikov kernel values per point, all that is left to do is essentially a cartesian product calculation. We add the values from this cartesian product to the 3D array, which was initially filled with zeroes. The full method presented here essentially eliminates duplicate kernel calculations entirely. This means that the main time complexity of the STOPKDE method, while still dependent on the bandwidth and voxel sizes, is essentially linear in the number of points. Namely: 
+A second technique used here attempts to minimise duplicate calculations by taking advantage of the summation in the STKDE equation. Now that we know which voxels are affected by the point, we can calculate the Epanechnikov kernel for each voxel and dimension. By combining this with some precomputation of the unique Epanechnikov kernel values per point, all that is left to do is essentially a cartesian product calculation. We add the values from this cartesian product to the 3D array, which was initially filled with zeroes. The full method presented here essentially eliminates duplicate kernel calculations entirely. This means that the main time complexity of the STOPKDE method, while still dependent on the bandwidth and voxel sizes, is essentially linear in the number of points. Namely: 
 
 $$
 O(n \cdot \frac{2h_x}{x_{size}} \cdot \frac{2h_y}{y_{size}} \cdot \frac{2h_t}{t_{size}})
@@ -135,19 +127,18 @@ To profit the most from this algorithm it is crucial to keep the three terms, or
 </p>
 <br>
 
-The algorithm implemented here is single-threaded, as Numba currently does not support CPU atomics see [this thread](https://github.com/numba/numba/issues/2988). It is of course entirely possible for this algorithm to be run in parallel without atomic adds by creating a thread-local 3D array, but this is not a neat solution. As it stands it is likely that significant performance gains could be made by porting this algorithm to a language like C++ or Rust, which support atomic adds natively anyway. Therefore, if more performance is required, I would suggest parallelizing in either of these languages, leveraging atomic operations to do so. It is also possible that this algorithm could be run on a GPU instead of the CPU, but that is beyond my current understanding. 
+The algorithm implemented here is single-threaded. It is possible for this algorithm to be run in parallel by creating a thread-local 3D array, but this increases memory usage linearly with the number of threads. Experiments could be done with atomic adds to the 3D array, but this might not improve performance much. Considerable performance gains can likely be made from porting to a language like C++ or Rust, if more performance is required I would suggest attempting this. 
 
 ## Visualisation
-The outputs of the STKDE can be visualised in 3D with any software that supports [.vti files](https://docs.vtk.org/en/latest/design_documents/VTKFileFormats.html), the author recommends ParaView (Ayachit, 2015), which can be downloaded through from the official [ParaView webpage](https://www.paraview.org/). To recreate the example NYC visualisation open the ParaView state file [_nyc_traffic.pvsm_](./notebooks/output/nyc_plots/nyc_traffic.pvsm) in ParaView, and select the _Search files under specified directory_ option for _Load State Data File Options_. Then make sure to select the _output_ directory in the repository. This should load the datasets into ParaView, as well as a basemap of the New York Burroughs (New York City Department of City Planning (DCP), 2013). Alternative visualization methods are of course also possible, such as plotting voxels as points for each temporal slice to generate an animation, or slicing through the ParaView Isosurface visualisation, I will leave this up to you to implement. 
+The outputs of the STKDE can be visualised in 3D with any software that supports [.vti files](https://docs.vtk.org/en/latest/design_documents/VTKFileFormats.html), the author recommends ParaView (Ayachit, 2015), which can be downloaded through from the official [ParaView webpage](https://www.paraview.org/). To recreate the example NYC visualisation open the ParaView state file [_nyc_traffic.pvsm_](./notebooks/output/nyc_plots/nyc_traffic.pvsm) in ParaView, and select the _Search files under specified directory_ option for _Load State Data File Options_. Then make sure to select the _output_ directory in the repository. This should load the datasets into ParaView, as well as a basemap of the New York Burroughs (New York City Department of City Planning (DCP), 2013). Alternative visualization methods are of course also possible, such as plotting voxels as points for each temporal slice to generate an animation, slicing through the ParaView Isosurface visualisation, or creating rasters from the 3D grid. I will leave this up to you to implement. 
 
 ## Limitations
 - Because this method relies on a bounded kernel, the optimisations shown here do not apply to unbounded kernels such as the Gaussian kernel.
 - There is currently no implemented form of edge correction.
-- Automatic bandwidth generation method does not scale well beyond 100,000 points. Ideal solution would be a 3D range tree, which proved difficult to implement in Numba.
-- No other bandwidth selection methods, such as Scott, Silverman or ISJ are implemented.
+- No support for ISJ for bandwidth estimation.
 - Not multithreaded yet (see performance section).
 - No inbuilt visualisation method.
-- No options for using other bounded kernels.
+- No options for using other kernels.
 - No options for dynamic bandwidth sizes. 
 
 ## References
